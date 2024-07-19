@@ -4,14 +4,63 @@ author: "David Kane"
 format: html
 execute: 
   echo: false
+  message: false
 ---
 
 ```{r}
 #| label: setup
-#| message: false
+suppressPackageStartupMessages({
+  library(gt)
+  library(tidyverse)
+  library(brms)
+  library(tidybayes)
+  library(bayesplot)
+})
 
-library(tidyverse)
-library(gt)
+x <- read_csv('data/resume.csv', show_col_types = FALSE)
+
+```
+
+```{r}
+model <- brm(formula = call ~ race,
+         data = x,
+         family = bernoulli(),
+         refresh = 0,
+         silent = 2,
+         seed = 9)
+model
+```
+
+```{r}
+#|cache: true
+# Generate predictions
+preds <- model |>
+  add_epred_draws(newdata = tibble(race = c("white", "black"))) |>
+  select(race, .epred)
+
+# Plot the results
+plot <- ggplot(preds, aes(x = .epred, fill = race)) +
+  geom_histogram(binwidth = 0.001, alpha = 0.8, position = "identity") +
+  scale_fill_manual(values = c("black" = "red", "white" = "cyan")) +
+  scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
+  labs(
+    title = "Posterior for Callback Rates",
+    subtitle = "Resumes with white-coded names are much more likely to receive callbacks",
+    x = "Probability of Callback",
+    fill = "(Likely) Race of Name on Resume"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 20, face = "bold"),
+    plot.subtitle = element_text(size = 14),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 12),
+    axis.title.x = element_text(size = 14),
+    axis.text.y = element_blank(), # Remove y-axis labels
+    axis.title.y = element_blank()  # Remove y-axis title
+  )
+
+plot
 ```
 
 ## From Monday's Class
@@ -122,9 +171,6 @@ tibble(ID = c("1", "2", "...", "10", "11", "...", "N"),
   tab_spanner(label = "Outcome", columns = c(attitude_after_control)) |>
   tab_spanner(label = "Covariate", columns = c(treatment))
 ```
-
-
-
 
 
 
